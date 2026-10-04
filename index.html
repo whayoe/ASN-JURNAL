@@ -264,10 +264,11 @@
     document.getElementById('tgl').valueAsDate = new Date();
     document.getElementById('notulenTgl').valueAsDate = new Date();
 
-    // Voice Speech Recognition Engine
+    // Voice Speech Recognition Engine (With Auto-Restart Fix)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
     let isRecording = false;
+    let shouldKeepRecording = false;
 
     function toggleSpeech(targetId, btnId) {
         if (!SpeechRecognition) {
@@ -279,10 +280,17 @@
         const target = document.getElementById(targetId);
 
         if (isRecording) {
-            recognition.stop();
+            shouldKeepRecording = false;
+            if (recognition) recognition.stop();
+            stopRecordingUI(btn);
             return;
         }
 
+        shouldKeepRecording = true;
+        initRecognition(target, btn);
+    }
+
+    function initRecognition(target, btn) {
         recognition = new SpeechRecognition();
         recognition.lang = 'id-ID';
         recognition.continuous = true;
@@ -307,13 +315,24 @@
         };
 
         recognition.onerror = function(event) {
-            console.error(event.error);
-            alert('Gagal merekam: ' + event.error + '. Pastikan izin mikrofon sudah diberikan pada browser Chrome.');
-            stopRecordingUI(btn);
+            console.warn('Speech Recognition Error:', event.error);
+            if (event.error === 'no-speech' && shouldKeepRecording) {
+                return;
+            }
         };
 
         recognition.onend = function() {
-            stopRecordingUI(btn);
+            if (shouldKeepRecording) {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    setTimeout(() => {
+                        if (shouldKeepRecording) recognition.start();
+                    }, 300);
+                }
+            } else {
+                stopRecordingUI(btn);
+            }
         };
 
         recognition.start();
@@ -321,6 +340,7 @@
 
     function stopRecordingUI(btn) {
         isRecording = false;
+        shouldKeepRecording = false;
         btn.classList.remove('recording-active');
         btn.innerHTML = `<i class="bi bi-mic-fill"></i> Rekam Suara`;
     }
@@ -368,17 +388,7 @@
                         <td><b>${n.judul}</b><br><small class="text-muted">Peserta: ${n.peserta || '-'}</small></td>
                         <td>${n.isi}</td>
                         <td><span class="badge bg-warning text-dark">${n.tl || '-'}</span></td>
-                        <td class="no-print">
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteNotulen(${index})"><i class="bi bi-x-lg"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-        updateStats();
-    }
-
-     // Save Jurnal
+  // Save Jurnal
     document.getElementById('journalForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const item = {
