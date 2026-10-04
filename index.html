@@ -3,140 +3,380 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASN Journal Work</title>
+    <title>ASN Journal Work - Pro Edition</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .navbar { background: linear-gradient(135deg, #1e3c72, #2a5298); }
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .btn-primary { background: #2a5298; border: none; }
         .btn-primary:hover { background: #1e3c72; }
+        .nav-pills .nav-link.active { background-color: #2a5298; }
+        .recording { animation: pulse 1.5s infinite; color: red; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        @media print {
+            .no-print { display: none !important; }
+            .card { box-shadow: none; border: 1px solid #ddd; }
+        }
     </style>
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark mb-4">
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark mb-4 no-print">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="#"><i class="bi bi-journal-check me-2"></i>ASN Journal Work</a>
+        <a class="navbar-brand fw-bold" href="#"><i class="bi bi-journal-check me-2"></i>ASN Journal Work <span class="badge bg-warning text-dark fs-6">PRO</span></a>
     </div>
 </nav>
 
 <div class="container mb-5">
-    <div class="row g-4">
-        <!-- Input Form -->
-        <div class="col-md-5">
-            <div class="card p-4">
-                <h5 class="card-title fw-bold text-primary mb-3"><i class="bi bi-plus-circle me-2"></i>Tambah Jurnal Harian</h5>
-                <form id="journalForm">
-                    <div class="mb-3">
-                        <label class="form-label font-weight-bold">Tanggal</label>
-                        <input type="date" class="form-control" id="tgl" required>
+    
+    <!-- Dashboard Stats -->
+    <div class="row g-3 mb-4 no-print">
+        <div class="col-md-4">
+            <div class="card p-3 bg-white text-dark">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 bg-primary text-white p-3 rounded-circle me-3">
+                        <i class="bi bi-journal-text fs-3"></i>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Hasil SKP / RHK</label>
-                        <input type="text" class="form-control" id="rhk" placeholder="Contoh: Terlaksananya pemeliharaan jaringan" required>
+                    <div>
+                        <small class="text-muted">Total Jurnal Harian</small>
+                        <h3 class="mb-0 fw-bold" id="statTotalJurnal">0</h3>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Kegiatan Harian</label>
-                        <textarea class="form-control" id="kegiatan" rows="3" placeholder="Uraikan pekerjaan harian Anda..." required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Output / Hasil</label>
-                        <input type="text" class="form-control" id="output" placeholder="Contoh: 1 Laporan / Terlayani 5 Berkas" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-save me-1"></i> Simpan Jurnal</button>
-                </form>
+                </div>
             </div>
         </div>
-
-        <!-- Tabel Jurnal -->
-        <div class="col-md-7">
-            <div class="card p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title fw-bold text-primary mb-0"><i class="bi bi-list-task me-2"></i>Daftar Jurnal Kerja</h5>
-                    <button class="btn btn-outline-danger btn-sm" onclick="clearData()"><i class="bi bi-trash"></i> Hapus Semua</button>
+        <div class="col-md-4">
+            <div class="card p-3 bg-white text-dark">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 bg-success text-white p-3 rounded-circle me-3">
+                        <i class="bi bi-mic fs-3"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted">Notulen Rapat Catat</small>
+                        <h3 class="mb-0 fw-bold" id="statTotalNotulen">0</h3>
+                    </div>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Tgl</th>
-                                <th>RHK</th>
-                                <th>Kegiatan</th>
-                                <th>Output</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="journalTable">
-                            <!-- Data dinamis -->
-                        </tbody>
-                    </table>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 bg-white text-dark">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 bg-info text-white p-3 rounded-circle me-3">
+                        <i class="bi bi-calendar-check fs-3"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted">Kegiatan Bulan Ini</small>
+                        <h3 class="mb-0 fw-bold" id="statBulanIni">0</h3>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-pills mb-4 no-print" id="pills-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="pills-jurnal-tab" data-bs-toggle="pill" data-bs-target="#pills-jurnal" type="button" role="tab"><i class="bi bi-pencil-square me-1"></i> Jurnal Harian / SKP</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="pills-notulen-tab" data-bs-toggle="pill" data-bs-target="#pills-notulen" type="button" role="tab"><i class="bi bi-mic-fill me-1"></i> Voice Notulen Rapat</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="pills-tabContent">
+        
+        <!-- TAB 1: JURNAL HARIAN -->
+        <div class="tab-pane fade show active" id="pills-jurnal" role="tabpanel">
+            <div class="row g-4">
+                <!-- Input Form -->
+                <div class="col-lg-4 no-print">
+                    <div class="card p-4">
+                        <h5 class="card-title fw-bold text-primary mb-3"><i class="bi bi-plus-circle me-2"></i>Tambah Jurnal</h5>
+                        <form id="journalForm">
+                            <div class="mb-3">
+                                <label class="form-label font-weight-bold">Tanggal</label>
+                                <input type="date" class="form-control" id="tgl" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Kategori Pekerjaan</label>
+                                <select class="form-select" id="kategori">
+                                    <option value="Tugas Utama">Tugas Utama</option>
+                                    <option value="Tugas Tambahan">Tugas Tambahan</option>
+                                    <option value="Rapat / Koordinasi">Rapat / Koordinasi</option>
+                                    <option value="Pelatihan / Diklat">Pelatihan / Diklat</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Hasil SKP / RHK</label>
+                                <input type="text" class="form-control" id="rhk" placeholder="Contoh: Terlaksananya pemeliharaan jaringan" required>
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label">Kegiatan Harian</label>
+                                    <button type="button" class="btn btn-outline-danger btn-sm mb-1" onclick="startSpeech('kegiatan')"><i class="bi bi-mic"></i> Dikte Voice</button>
+                                </div>
+                                <textarea class="form-control" id="kegiatan" rows="3" placeholder="Uraikan pekerjaan harian Anda..." required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Output / Hasil</label>
+                                <input type="text" class="form-control" id="output" placeholder="Contoh: 1 Laporan / 5 Berkas Selesai" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Link Bukti Fisik / Drive (Opsional)</label>
+                                <input type="url" class="form-control" id="bukti" placeholder="https://drive.google.com/...">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-save me-1"></i> Simpan Jurnal</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tabel Data & Filter -->
+                <div class="col-lg-8">
+                    <div class="card p-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 no-print gap-2">
+                            <h5 class="card-title fw-bold text-primary mb-0"><i class="bi bi-list-task me-2"></i>Daftar Jurnal Kerja</h5>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success btn-sm" onclick="exportToExcel('journalTable', 'Jurnal_ASN')"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+                                <button class="btn btn-secondary btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Cetak PDF</button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="clearData('asn_journals')"><i class="bi bi-trash"></i> Hapus</button>
+                            </div>
+                        </div>
+
+                        <!-- Filter Search Bar -->
+                        <div class="row g-2 mb-3 no-print">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control form-control-sm" id="searchJurnal" placeholder="Cari kegiatan atau RHK..." onkeyup="filterJurnal()">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="date" class="form-control form-control-sm" id="filterTglAwal" onchange="filterJurnal()">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="date" class="form-control form-control-sm" id="filterTglAkhir" onchange="filterJurnal()">
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle" id="journalTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Tgl</th>
+                                        <th>Kategori</th>
+                                        <th>RHK</th>
+                                        <th>Kegiatan</th>
+                                        <th>Output</th>
+                                        <th class="no-print">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="journalBody">
+                                    <!-- Data Jurnal -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: VOICE NOTULEN RAPAT -->
+        <div class="tab-pane fade" id="pills-notulen" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-lg-5 no-print">
+                    <div class="card p-4">
+                        <h5 class="card-title fw-bold text-primary mb-3"><i class="bi bi-mic me-2"></i>Notulen Rapat (Voice-to-Text)</h5>
+                        <form id="notulenForm">
+                            <div class="mb-3">
+                                <label class="form-label">Judul Rapat / Agenda</label>
+                                <input type="text" class="form-control" id="notulenJudul" placeholder="Contoh: Rapat Evaluasi Kinerja Bulanan" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Tanggal Rapat</label>
+                                <input type="date" class="form-control" id="notulenTgl" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Peserta Rapat</label>
+                                <input type="text" class="form-control" id="notulenPeserta" placeholder="Contoh: Kabid, Kasubbag, Staf IT">
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label">Ringkasan / Poin Pembahasan</label>
+                                    <button type="button" id="btnRecNotulen" class="btn btn-outline-danger btn-sm mb-1" onclick="startSpeech('notulenIsi')"><i class="bi bi-mic-fill"></i> Rekam Suara</button>
+                                </div>
+                                <textarea class="form-control" id="notulenIsi" rows="4" placeholder="Tekan tombol rekam suara atau ketik poin hasil rapat..." required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Tindak Lanjut / Action Items</label>
+                                <textarea class="form-control" id="notulenTl" rows="2" placeholder="Tugas yang harus diselesaikan setelah rapat..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-save me-1"></i> Simpan Notulen</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-lg-7">
+                    <div class="card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+                            <h5 class="card-title fw-bold text-primary mb-0"><i class="bi bi-file-text me-2"></i>Arsip Notulen Rapat</h5>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success btn-sm" onclick="exportToExcel('notulenTable', 'Notulen_Rapat_ASN')"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="clearData('asn_notulen')"><i class="bi bi-trash"></i> Hapus</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle" id="notulenTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Tgl</th>
+                                        <th>Agenda Rapat</th>
+                                        <th>Ringkasan Hasil</th>
+                                        <th>Tindak Lanjut</th>
+                                        <th class="no-print">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="notulenBody">
+                                    <!-- Data Notulen -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
 
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
+    // State Data
     let journals = JSON.parse(localStorage.getItem('asn_journals')) || [];
+    let notulens = JSON.parse(localStorage.getItem('asn_notulen')) || [];
 
+    // Init Dates
     document.getElementById('tgl').valueAsDate = new Date();
+    document.getElementById('notulenTgl').valueAsDate = new Date();
 
-    function renderTable() {
-        const tbody = document.getElementById('journalTable');
-        tbody.innerHTML = '';
-        if(journals.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Belum ada data jurnal.</td></tr>';
+    // Voice Speech Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+
+    function startSpeech(targetId) {
+        if (!SpeechRecognition) {
+            alert('Fitur Voice-to-Text tidak didukung di browser ini. Silakan gunakan Google Chrome.');
             return;
         }
-        journals.forEach((j, index) => {
-            tbody.innerHTML += `
-                <tr>
-                    <td><small>${j.tgl}</small></td>
-                    <td><small><b>${j.rhk}</b></small></td>
-                    <td>${j.kegiatan}</td>
-                    <td><span class="badge bg-info text-dark">${j.output}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${index})"><i class="bi bi-x"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
+
+        recognition = new SpeechRecognition();
+        recognition.lang = 'id-ID';
+        recognition.interimResults = false;
+
+        recognition.onstart = function() {
+            alert('Mulai berbicara... Suara Anda akan otomatis diubah menjadi teks.');
+        };
+
+        recognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            const target = document.getElementById(targetId);
+            target.value = target.value ? target.value + ' ' + transcript : transcript;
+        };
+
+        recognition.onerror = function(event) {
+            alert('Kesalahan merekam suara: ' + event.error);
+        };
+
+        recognition.start();
     }
 
+    // Render Jurnal Table
+    function renderJurnal(dataFilter = null) {
+        const tbody = document.getElementById('journalBody');
+        tbody.innerHTML = '';
+        const listData = dataFilter || journals;
+
+        if (listData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Belum ada data jurnal.</td></tr>';
+        } else {
+            listData.forEach((j, index) => {
+                const linkBukti = j.bukti ? `<br><a href="${j.bukti}" target="_blank" class="badge bg-secondary text-decoration-none no-print"><i class="bi bi-link-45deg"></i> Bukti</a>` : '';
+                tbody.innerHTML += `
+                    <tr>
+                        <td><small>${j.tgl}</small></td>
+                        <td><span class="badge bg-primary">${j.kategori}</span></td>
+                        <td><small><b>${j.rhk}</b></small></td>
+                        <td>${j.kegiatan} ${linkBukti}</td>
+                        <td><span class="badge bg-info text-dark">${j.output}</span></td>
+                        <td class="no-print">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteJurnal(${index})"><i class="bi bi-x-lg"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        updateStats();
+    }
+
+    // Render Notulen Table
+    function renderNotulen() {
+        const tbody = document.getElementById('notulenBody');
+        tbody.innerHTML = '';
+
+        if (notulens.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Belum ada catatan notulen rapat.</td></tr>';
+        } else {
+            notulens.forEach((n, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><small>${n.tgl}</small></td>
+                        <td><b>${n.judul}</b><br><small class="text-muted">Peserta: ${n.peserta || '-'}</small></td>
+                        <td>${n.isi}</td>
+                        <td><span class="badge bg-warning text-dark">${n.tl || '-'}</span></td>
+                        <td class="no-print">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteNotulen(${index})"><i class="bi bi-x-lg"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        updateStats();
+    }
+
+    // Save Jurnal
     document.getElementById('journalForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const item = {
             tgl: document.getElementById('tgl').value,
+            kategori: document.getElementById('kategori').value,
             rhk: document.getElementById('rhk').value,
             kegiatan: document.getElementById('kegiatan').value,
-            output: document.getElementById('output').value
+            output: document.getElementById('output').value,
+            bukti: document.getElementById('bukti').value
         };
-        journals.push(item);
+        journals.unshift(item);
         localStorage.setItem('asn_journals', JSON.stringify(journals));
         this.reset();
         document.getElementById('tgl').valueAsDate = new Date();
-        renderTable();
+        renderJurnal();
     });
 
-    function deleteItem(index) {
-        journals.splice(index, 1);
-        localStorage.setItem('asn_journals', JSON.stringify(journals));
-        renderTable();
-    }
-
-    function clearData() {
-        if(confirm('Hapus seluruh data jurnal?')) {
-            journals = [];
-            localStorage.removeItem('asn_journals');
-            renderTable();
-        }
-    }
-
-    renderTable();
-</script>
-
-</body>
-                          </html>
-  
+    // Save Notulen
+    document.getElementById('notulenForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const item = {
+            judul: document.getElementById('notulenJudul').value,
+            tgl: document.getElementById('notulenTgl').value,
+            peserta: document.getElementById('notulenPeserta').value,
+            isi: document.getElementById('notulenIsi').value,
+            tl: document.getElementById('notulenTl').value
+        };
+        notulens.unshift(item);
+        localStorage.setItem('asn_notulen', JSON.stringify(notulens));
+        this.reset();
+        document.getElementById('notulenTgl').valueAsD
