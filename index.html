@@ -17,8 +17,8 @@
         .btn-primary { background: #2a5298; border: none; }
         .btn-primary:hover { background: #1e3c72; }
         .nav-pills .nav-link.active { background-color: #2a5298; }
-        .recording { animation: pulse 1.5s infinite; color: red; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .recording-active { animation: blink 1s infinite; background-color: #dc3545 !important; color: white !important; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         @media print {
             .no-print { display: none !important; }
             .card { box-shadow: none; border: 1px solid #ddd; }
@@ -119,7 +119,7 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <label class="form-label">Kegiatan Harian</label>
-                                    <button type="button" class="btn btn-outline-danger btn-sm mb-1" onclick="startSpeech('kegiatan')"><i class="bi bi-mic"></i> Dikte Voice</button>
+                                    <button type="button" id="btnVoiceJurnal" class="btn btn-outline-danger btn-sm mb-1" onclick="toggleSpeech('kegiatan', 'btnVoiceJurnal')"><i class="bi bi-mic-fill"></i> Dikte Voice</button>
                                 </div>
                                 <textarea class="form-control" id="kegiatan" rows="3" placeholder="Uraikan pekerjaan harian Anda..." required></textarea>
                             </div>
@@ -205,7 +205,7 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <label class="form-label">Ringkasan / Poin Pembahasan</label>
-                                    <button type="button" id="btnRecNotulen" class="btn btn-outline-danger btn-sm mb-1" onclick="startSpeech('notulenIsi')"><i class="bi bi-mic-fill"></i> Rekam Suara</button>
+                                    <button type="button" id="btnVoiceNotulen" class="btn btn-danger btn-sm mb-1" onclick="toggleSpeech('notulenIsi', 'btnVoiceNotulen')"><i class="bi bi-mic-fill"></i> Rekam Suara</button>
                                 </div>
                                 <textarea class="form-control" id="notulenIsi" rows="4" placeholder="Tekan tombol rekam suara atau ketik poin hasil rapat..." required></textarea>
                             </div>
@@ -264,35 +264,65 @@
     document.getElementById('tgl').valueAsDate = new Date();
     document.getElementById('notulenTgl').valueAsDate = new Date();
 
-    // Voice Speech Recognition Setup
+    // Voice Speech Recognition Engine
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition;
+    let recognition = null;
+    let isRecording = false;
 
-    function startSpeech(targetId) {
+    function toggleSpeech(targetId, btnId) {
         if (!SpeechRecognition) {
-            alert('Fitur Voice-to-Text tidak didukung di browser ini. Silakan gunakan Google Chrome.');
+            alert('Perangkat Anda tidak mendukung fitur dikte suara otomatis. Silakan gunakan browser Google Chrome di Android.');
+            return;
+        }
+
+        const btn = document.getElementById(btnId);
+        const target = document.getElementById(targetId);
+
+        if (isRecording) {
+            recognition.stop();
             return;
         }
 
         recognition = new SpeechRecognition();
         recognition.lang = 'id-ID';
-        recognition.interimResults = false;
+        recognition.continuous = true;
+        recognition.interimResults = true;
 
         recognition.onstart = function() {
-            alert('Mulai berbicara... Suara Anda akan otomatis diubah menjadi teks.');
+            isRecording = true;
+            btn.classList.add('recording-active');
+            btn.innerHTML = `<i class="bi bi-stop-circle-fill"></i> Berhenti Merekam...`;
         };
 
         recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript;
-            const target = document.getElementById(targetId);
-            target.value = target.value ? target.value + ' ' + transcript : transcript;
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript + ' ';
+                }
+            }
+            if (finalTranscript) {
+                target.value += (target.value ? ' ' : '') + finalTranscript;
+            }
         };
 
         recognition.onerror = function(event) {
-            alert('Kesalahan merekam suara: ' + event.error);
+            console.error(event.error);
+            alert('Gagal merekam: ' + event.error + '. Pastikan izin mikrofon sudah diberikan pada browser Chrome.');
+            stopRecordingUI(btn);
+        };
+
+        recognition.onend = function() {
+            stopRecordingUI(btn);
         };
 
         recognition.start();
+    }
+
+    function stopRecordingUI(btn) {
+        isRecording = false;
+        btn.classList.remove('recording-active');
+        btn.innerHTML = `<i class="bi bi-mic-fill"></i> Rekam Suara`;
     }
 
     // Render Jurnal Table
@@ -348,7 +378,7 @@
         updateStats();
     }
 
-    // Save Jurnal
+     // Save Jurnal
     document.getElementById('journalForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const item = {
@@ -379,4 +409,69 @@
         notulens.unshift(item);
         localStorage.setItem('asn_notulen', JSON.stringify(notulens));
         this.reset();
-        document.getElementById('notulenTgl').valueAsD
+        document.getElementById('notulenTgl').valueAsDate = new Date();
+        renderNotulen();
+    });
+
+    // Filter Jurnal
+    function filterJurnal() {
+        const keyword = document.getElementById('searchJurnal').value.toLowerCase();
+        const tglAwal = document.getElementById('filterTglAwal').value;
+        const tglAkhir = document.getElementById('filterTglAkhir').value;
+
+        const filtered = journals.filter(j => {
+            const matchKey = j.kegiatan.toLowerCase().includes(keyword) || j.rhk.toLowerCase().includes(keyword);
+            const matchTglAwal = tglAwal ? j.tgl >= tglAwal : true;
+            const matchTglAkhir = tglAkhir ? j.tgl <= tglAkhir : true;
+            return matchKey && matchTglAwal && matchTglAkhir;
+        });
+
+        renderJurnal(filtered);
+    }
+
+    // Delete Handlers
+    function deleteJurnal(index) {
+        journals.splice(index, 1);
+        localStorage.setItem('asn_journals', JSON.stringify(journals));
+        renderJurnal();
+    }
+
+    function deleteNotulen(index) {
+        notulens.splice(index, 1);
+        localStorage.setItem('asn_notulen', JSON.stringify(notulens));
+        renderNotulen();
+    }
+
+    function clearData(key) {
+        if (confirm('Hapus seluruh data ini?')) {
+            localStorage.removeItem(key);
+            if (key === 'asn_journals') { journals = []; renderJurnal(); }
+            if (key === 'asn_notulen') { notulens = []; renderNotulen(); }
+        }
+    }
+
+    // Export Excel
+    function exportToExcel(tableId, filename) {
+        const table = document.getElementById(tableId);
+        const wb = XLSX.utils.table_to_book(table, { sheet: "Data" });
+        XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // Update Dashboard Stats
+    function updateStats() {
+        document.getElementById('statTotalJurnal').innerText = journals.length;
+        document.getElementById('statTotalNotulen').innerText = notulens.length;
+        
+        const now = new Date();
+        const currentMonth = now.toISOString().slice(0, 7);
+        const bulanIniCount = journals.filter(j => j.tgl && j.tgl.startsWith(currentMonth)).length;
+        document.getElementById('statBulanIni').innerText = bulanIniCount;
+    }
+
+    // Initial Load
+    renderJurnal();
+    renderNotulen();
+</script>
+
+</body>
+</html>
