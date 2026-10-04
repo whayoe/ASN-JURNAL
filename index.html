@@ -117,9 +117,9 @@
                                 <input type="text" class="form-control" id="rhk" placeholder="Contoh: Terlaksananya pemeliharaan jaringan" required>
                             </div>
                             <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <label class="form-label">Kegiatan Harian</label>
-                                    <button type="button" id="btnVoiceJurnal" class="btn btn-outline-danger btn-sm mb-1" onclick="toggleSpeech('kegiatan', 'btnVoiceJurnal')"><i class="bi bi-mic-fill"></i> Dikte Voice</button>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label mb-0">Kegiatan Harian</label>
+                                    <button type="button" id="btnVoiceJurnal" class="btn btn-outline-danger btn-sm" onclick="startVoiceInput('kegiatan', 'btnVoiceJurnal')"><i class="bi bi-mic-fill"></i> Dikte Voice</button>
                                 </div>
                                 <textarea class="form-control" id="kegiatan" rows="3" placeholder="Uraikan pekerjaan harian Anda..." required></textarea>
                             </div>
@@ -203,11 +203,11 @@
                                 <input type="text" class="form-control" id="notulenPeserta" placeholder="Contoh: Kabid, Kasubbag, Staf IT">
                             </div>
                             <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <label class="form-label">Ringkasan / Poin Pembahasan</label>
-                                    <button type="button" id="btnVoiceNotulen" class="btn btn-danger btn-sm mb-1" onclick="toggleSpeech('notulenIsi', 'btnVoiceNotulen')"><i class="bi bi-mic-fill"></i> Rekam Suara</button>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label mb-0">Ringkasan / Poin Pembahasan</label>
+                                    <button type="button" id="btnVoiceNotulen" class="btn btn-danger btn-sm" onclick="startVoiceInput('notulenIsi', 'btnVoiceNotulen')"><i class="bi bi-mic-fill"></i> Rekam Suara</button>
                                 </div>
-                                <textarea class="form-control" id="notulenIsi" rows="4" placeholder="Tekan tombol rekam suara atau ketik poin hasil rapat..." required></textarea>
+                                <textarea class="form-control" id="notulenIsi" rows="4" placeholder="Tekan tombol rekam suara atau gunakan dikte bawaan HP..." required></textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Tindak Lanjut / Action Items</label>
@@ -264,71 +264,72 @@
     document.getElementById('tgl').valueAsDate = new Date();
     document.getElementById('notulenTgl').valueAsDate = new Date();
 
-    // Voice Speech Recognition Engine (Fixed & Optimized for Android Chrome)
-    let recognition = null;
-    let isRecording = false;
+    // Universal Voice Input Handler
+    let activeRecognition = null;
+    let isActive = false;
 
-    function toggleSpeech(targetId, btnId) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        
-        if (!SpeechRecognition) {
-            alert('Browser Anda tidak mendukung fitur ini. Silakan gunakan Google Chrome di HP Android.');
-            return;
-        }
-
-        const btn = document.getElementById(btnId);
+    function startVoiceInput(targetId, btnId) {
         const target = document.getElementById(targetId);
+        const btn = document.getElementById(btnId);
 
-        // Hentikan perekaman jika tombol diketuk saat sedang merekam
-        if (isRecording && recognition) {
-            recognition.stop();
-            stopRecordingUI(btn);
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            // Jika Web Speech API diblokir penuh oleh browser Android, fokuskan ke textarea agar mikrofon keyboard HP langsung aktif
+            target.focus();
+            alert("Fitur perekam browser tidak didukung di perangkat ini. Silakan gunakan ikon Mikrofon pada Keyboard HP Anda.");
             return;
         }
 
-        // Inisialisasi ulang SpeechRecognition secara langsung
-        recognition = new SpeechRecognition();
-        recognition.lang = 'id-ID';
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        recognition.onstart = function() {
-            isRecording = true;
-            btn.classList.add('recording-active');
-            btn.innerHTML = `<i class="bi bi-stop-circle-fill"></i> Mendengarkan...`;
-        };
-
-        recognition.onresult = function(event) {
-            const transcriptText = event.results[0][0].transcript;
-            if (transcriptText) {
-                target.value += (target.value ? ' ' : '') + transcriptText;
-            }
-        };
-
-        recognition.onerror = function(event) {
-            console.error('Speech Error:', event.error);
-            if (event.error === 'not-allowed') {
-                alert('Izin mikrofon ditolak/terblokir. Silakan izinkan akses mikrofon pada setelan Chrome.');
-            } else if (event.error === 'network') {
-                alert('Pengenalan suara membutuhkan koneksi internet yang aktif.');
-            }
-            stopRecordingUI(btn);
-        };
-
-        recognition.onend = function() {
-            stopRecordingUI(btn);
-        };
+        if (isActive) {
+            if (activeRecognition) activeRecognition.stop();
+            resetBtnUI(btn);
+            return;
+        }
 
         try {
-            recognition.start();
-        } catch (e) {
-            console.error('Recognition start error:', e);
-            stopRecordingUI(btn);
+            activeRecognition = new SpeechRecognition();
+            activeRecognition.lang = 'id-ID';
+            activeRecognition.continuous = true;
+            activeRecognition.interimResults = true;
+
+            activeRecognition.onstart = function() {
+                isActive = true;
+                btn.classList.add('recording-active');
+                btn.innerHTML = `<i class="bi bi-stop-circle-fill"></i> Stop Rekam`;
+            };
+
+            activeRecognition.onresult = function(event) {
+                let text = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    text += event.results[i][0].transcript;
+                }
+                if (text) {
+                    target.value += (target.value ? ' ' : '') + text;
+                }
+            };
+
+            activeRecognition.onerror = function(e) {
+                console.warn('Speech Engine Error:', e.error);
+                // Jika web speech gagal/network error, alihkan fokus ke keyboard bawaan HP
+                target.focus();
+                resetBtnUI(btn);
+            };
+
+            activeRecognition.onend = function() {
+                resetBtnUI(btn);
+            };
+
+            activeRecognition.start();
+        } catch (err) {
+            console.error('Recognition Exception:', err);
+            target.focus();
+            resetBtnUI(btn);
         }
     }
 
-    function stopRecordingUI(btn) {
-        isRecording = false;
+    function resetBtnUI(btn) {
+        isActive = false;
         if (btn) {
             btn.classList.remove('recording-active');
             btn.innerHTML = `<i class="bi bi-mic-fill"></i> Rekam Suara`;
@@ -363,7 +364,7 @@
         updateStats();
     }
 
-    // Render Notulen Table
+     // Render Notulen Table
     function renderNotulen() {
         const tbody = document.getElementById('notulenBody');
         tbody.innerHTML = '';
@@ -381,7 +382,14 @@
                         <td class="no-print">
                             <button class="btn btn-sm btn-outline-danger" onclick="deleteNotulen(${index})"><i class="bi bi-x-lg"></i></button>
                         </td>
-             // Save Jurnal
+                    </tr>
+                `;
+            });
+        }
+        updateStats();
+    }
+
+    // Save Jurnal
     document.getElementById('journalForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const item = {
@@ -477,4 +485,4 @@
 </script>
 
 </body>
-</html>       
+</html>
